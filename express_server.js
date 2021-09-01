@@ -24,13 +24,13 @@ const generateRandomString = (len = 6) => {
 
   for (let i = 0; i < len; i++) {
     let charNum = Math.floor(Math.random() * 62) + 48;
-    if (charNum > 57) { //48+9
+    if (charNum > 57) { //48 [start position of numbers] + 9 [0 to 9]
       charNum += 7;
     }
-    if (charNum > 90) { //48+7+35
+    if (charNum > 90) { //48+9+7+26
       charNum += 6;
     }
-    randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding utf-8
+    randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding with utf-8
   }
 
   if (urlDatabase[randomStr]) {
@@ -65,6 +65,16 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+app.post("/urls/:shortURL/delete", (req, res) => {
+  const id = req.params.shortURL;
+
+  if (urlDatabase[id]){
+    delete urlDatabase[id];
+  } 
+  res.redirect("/urls");  
+});
+
+
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
 
@@ -72,7 +82,6 @@ app.get("/urls/:shortURL", (req, res) => {
     const templateVars = { shortURL : id, longURL : urlDatabase[id]};
     res.render("urls_show", templateVars)
   } else {
-    console.log('why??');
     res.redirect("/urls");
   }
 });
