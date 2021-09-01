@@ -51,11 +51,14 @@ app.get("/urls", (req, res) => {
 
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
+  let id = '';
   if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
-    const id = generateRandomString(6);
+    id = generateRandomString(6);
     urlDatabase[id] = longURL;
+  } else {
+    id = Object.keys(urlDatabase).find(key => object[key] === longURL);
   }
-  res.redirect("/urls");
+  res.redirect(`/urls/${id}`);
 });
 
 app.get("/urls/new", (req, res) => {
@@ -69,9 +72,17 @@ app.get("/urls/:shortURL", (req, res) => {
     const templateVars = { shortURL : id, longURL : urlDatabase[id]};
     res.render("urls_show", templateVars)
   } else {
+    console.log('why??');
     res.redirect("/urls");
   }
+});
 
+app.get("/u/:shortURL", (req, res) => {
+  if (urlDatabase[req.params.shortURL]) {
+    res.redirect(urlDatabase[req.params.shortURL]);
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 app.get("/urls.json", (req, res) => {
