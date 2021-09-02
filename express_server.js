@@ -11,15 +11,21 @@ app.set("view engine", "ejs");
 app.use(cookieParser());
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "jI8Njdd"
+  },
+    i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "jI8Njdd"
+  }
 };
 
 const users = { 
   "jI8Njdd": {
     id: "jI8Njdd", 
-    email: "admin@example.com", 
-    password: "1234"
+    email: "jeff.shjeon@gmail.com", 
+    password: "1111"
   },
   "kST6Rs1": {
     id: "kST6Rs1", 
@@ -30,7 +36,11 @@ const users = {
 
 const errMsgs = {
   ERR_S_USR001: "Email address is already being used.",
-  ERR_S_USR002: "Email address or Password can not be empty."
+  ERR_S_USR002: "Email address or Password can not be empty.",
+  ERR_S_USR003: "User is already logged in.",
+  ERR_S_USR004: "Login is needed to create new URL.",
+  ERR_S_URL005: "Short URL doesn't exist.",
+  ERR_S_URL006: "Long URL is someting wrong."
 };
 
 // 62 == count[0-9] + count[A-Z] + count[a-z]
@@ -63,24 +73,42 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars)
 });
 
-//Create
+//Create URL
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   let id = '';
-  if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
+
+  // Should find existing long URL the deny to create URL?
+  id = generateRandomString(6);
+  while (urlDatabase[id]) {
     id = generateRandomString(6);
-    while (urlDatabase[id]) {
-      id = generateRandomString(6);
-    }
-    urlDatabase[id] = longURL;
-  } else { //if longUrl exist just redirect with id
-    id = Object.keys(urlDatabase).find(key => urlDatabase[key] === longURL);
   }
+  urlDatabase[id] = {
+    longURL,
+    userID: users[req.cookies["user_id"]]
+  };  
+  // if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
+  //   id = generateRandomString(6);
+  //   while (urlDatabase[id]) {
+  //     id = generateRandomString(6);
+  //   }
+  //   urlDatabase[id] = {
+  //     longURL,
+  //     userID: users[req.cookies["user_id"]]
+  //   };
+  // } else { //if longUrl exist just redirect with id
+  //   //TBDTBDTBDTBDTBDTBDTBD error handler pass
+  //   id = Object.keys(urlDatabase).find(key => urlDatabase[key].longURL === longURL);
+  // }
   res.redirect(`/urls/${id}`);
 });
 
-//Page of creation
-app.get("/urls/new", (req, res) => {
+//Create URL-view
+app.get("/urls/new", (req, res) => {  
+  if (!users[req.cookies["user_id"]]) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR004);
+    return;
+  }
   const templateVars = { user: users[req.cookies["user_id"]]};
   res.render("urls_new", templateVars);
 });
@@ -90,7 +118,10 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const id = req.params.shortURL;
   if (urlDatabase.hasOwnProperty(id)){
     delete urlDatabase[id];
-  } 
+  } else {
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    return;
+  }
   res.redirect("/urls");  
 });
 
@@ -98,9 +129,13 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
-
   if (urlDatabase.hasOwnProperty(id)){
-    urlDatabase[id] = newURL;
+    urlDatabase[id] = {
+      longURL : newURL
+    };
+  } else {
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    return;
   }
   res.redirect(`/urls/${id}`);
 });
@@ -110,27 +145,48 @@ app.get("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
 
   if (urlDatabase.hasOwnProperty(id)){
-    const templateVars = { user: users[req.cookies["user_id"]], shortURL : id, longURL : urlDatabase[id]};
+    const templateVars = { user: users[req.cookies["user_id"]], shortURL : id, longURL : urlDatabase[id].longURL};
     res.render("urls_show", templateVars)
   } else {
-    res.redirect("/urls");
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    return;
   }
 });
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  if (urlDatabase.hasOwnProperty(req.params.shortURL)) {
-    res.redirect(urlDatabase[req.params.shortURL]);
+  const shortURL = req.params.shortURL;
+
+  console.log('req.params.shortURL->',req.params.shortURL);  
+  console.log(urlDatabase.hasOwnProperty(req.params.shortURL));
+
+  console.log('shortURL->',shortURL);  
+  console.log(urlDatabase.hasOwnProperty(shortURL));
+
+  
+  if (urlDatabase.hasOwnProperty(shortURL)) {
+    res.redirect(urlDatabase[shortURL].longURL);
   } else {
-    res.redirect("/urls");
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL006, {urls : urlDatabase});
+    return;
   }
+  // if (urlDatabase.hasOwnProperty(req.params.shortURL)) {
+  //   res.redirect(urlDatabase[req.params.shortURL].longURL);
+  // } else {
+  //   errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL006, {urls : urlDatabase});
+  //   return;
+  // }
 });
 
 //Register User-view
 app.get("/register", (req, res) => {
-  //should block if user already login or has user-info in cookie?
-  const templateVars = { user: users[req.cookies["user_id"]]};
-  res.render('urls_register', templateVars);
+//  const templateVars = { user: users[req.cookies["user_id"]]};
+  if (users[req.cookies["user_id"]]) {
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
+    return;
+  }
+  // res.render('urls_register', templateVars);
+  res.render('urls_register');
 });
 
 //Register User
@@ -138,7 +194,6 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  console.log(checkRegistInfo(email, password));
   if (checkRegistInfo(email, password)) {
     let id = generateRandomString(7);
     while (users.hasOwnProperty(id)) {
@@ -167,19 +222,26 @@ const checkRegistInfo = (email, password) => {
   return false;
 }
 
-const errorHandler = (req, res, renderEJS, errMsg) => {
+const errorHandler = (req, res, renderEJS, errMsg, obj) => {
   const templateVars = { 
     user: users[req.cookies["user_id"]],
     'errMsg': errMsg
   };
+  for (el in obj) {
+    templateVars[el] = obj[el];
+  }
+
   res.render(renderEJS, templateVars);
   return;
 };
 
 //Login-view
 app.get("/login", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]]};
-  res.render("urls_login", templateVars);
+  if (users[req.cookies["user_id"]]) {
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
+    return;
+  }
+  res.render("urls_login");
 });
 
 //Login
