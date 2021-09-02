@@ -138,6 +138,7 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  console.log(checkRegistInfo(email, password));
   if (checkRegistInfo(email, password)) {
     let id = generateRandomString(7);
     while (users.hasOwnProperty(id)) {
@@ -158,7 +159,7 @@ app.post("/register", (req, res) => {
 const checkRegistInfo = (email, password) => {
   if (email.trim() && password.trim()) {
     // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
-    if (!userExists(email)) {
+    if (!getUserObj(email)) {
       //errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
       return true;
     }
@@ -191,9 +192,10 @@ app.post("/login", (req, res) => {
     if (user.password === password) {
       res.cookie('user_id', user.id); 
       res.redirect("/urls");
+      return;
     }
   } 
-  res.status(400).end();
+  res.status(403).end();
 });
 
 //Logout
@@ -202,18 +204,18 @@ app.post("/logout", (req, res) => {
   res.redirect("/urls");
 });
 
-/**
- * @param {String} email 
- * @return {boolean}
- */
- const userExists = (inputEmail) => {  
-  for (userId in users) {
-    if (users[userId].email === inputEmail) {
-      return true;
-    }    
-  }
-  return false;
-};
+// /**
+//  * @param {String} email 
+//  * @return {boolean}
+//  */
+//  const userExists = (inputEmail) => {  
+//   for (userId in users) {
+//     if (users[userId].email === inputEmail) {
+//       return true;
+//     }    
+//   }
+//   return false;
+// };
 
 /**
  * @param {String} email 
