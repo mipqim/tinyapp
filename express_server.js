@@ -29,17 +29,9 @@ const users = {
 };
 
 const errMsgs = {
-  ERRUSR001: "Email address is already being used.",
-  ERRUSR002: "Email address or Password can not be empty."
+  ERR_S_USR001: "Email address is already being used.",
+  ERR_S_USR002: "Email address or Password can not be empty."
 };
-/*
-for (var planet in planetMoons) {
-  // additional filter for object properties:
-  if (planetMoons.hasOwnProperty(planet)) {
-    //  ...
-  }
-}
-*/
 
 // 62 == count[0-9] + count[A-Z] + count[a-z]
 // decimal 48 == '0' in utf-8
@@ -143,20 +135,14 @@ app.get("/register", (req, res) => {
 
 //Register User
 app.post("/register", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]]};
   const email = req.body.email;
   const password = req.body.password;
 
-  if (userExists(email)) {
-    errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
-    return;
-  }
-  if (email && password) {
+  if (checkRegistInfo(email, password)) {
     let id = generateRandomString(7);
     while (users.hasOwnProperty(id)) {
       id = generateRandomString(7);
     }
-    // should check duplicate email?
     users[id] = {
       'id' : id,
       'email' : email,
@@ -164,13 +150,21 @@ app.post("/register", (req, res) => {
     };
     res.cookie('user_id', id); 
     res.redirect("/urls");  
-    return;
   } else {
-    errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
-    return;  
-  }
+    res.status(400).end();
+  } 
 });
 
+const checkRegistInfo = (email, password) => {
+  if (email.trim() && password.trim()) {
+    // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
+    if (!userExists(email)) {
+      //errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
+      return true;
+    }
+  }
+  return false;
+}
 
 const errorHandler = (req, res, renderEJS, errMsg) => {
   const templateVars = { 
@@ -181,11 +175,38 @@ const errorHandler = (req, res, renderEJS, errMsg) => {
   return;
 };
 
+//Login-view
+app.get("/login", (req, res) => {
+  const templateVars = { user: users[req.cookies["user_id"]]};
+  res.render("urls_login", templateVars);
+});
+
+//Login
+app.post("/login", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  const user = getUserObj(email);
+
+  if (user) {
+    if (user.password === password) {
+      res.cookie('user_id', user.id); 
+      res.redirect("/urls");
+    }
+  } 
+  res.status(400).end();
+});
+
+//Logout
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id");
+  res.redirect("/urls");
+});
+
 /**
  * @param {String} email 
  * @return {boolean}
  */
-const userExists = (inputEmail) => {  
+ const userExists = (inputEmail) => {  
   for (userId in users) {
     if (users[userId].email === inputEmail) {
       return true;
@@ -194,19 +215,18 @@ const userExists = (inputEmail) => {
   return false;
 };
 
-
-//Login
-app.post("/login", (req, res) => {
-  const username = req.body.username;
-  res.cookie('username', username); 
-  res.redirect("/urls");
-});
-
-//Logout
-app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
-  res.redirect("/urls");  
-});
+/**
+ * @param {String} email 
+ * @returns {(boolean|Object)}
+ */
+const getUserObj = (inputEmail) => {
+  for (userId in users) {
+    if (users[userId].email === inputEmail) {
+      return users[userId];
+    }    
+  }
+  return false;
+};
 
 
 

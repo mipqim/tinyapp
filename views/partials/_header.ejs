@@ -19,15 +19,23 @@
           <a class="nav-item nav-link" href="/urls">My URLs</a>
           <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
         </div>
-      </div>
-      <form class="d-flex" method="POST">
+      </div>      
+
         <% if (!user || !user['email']) { %>
+          <div class="navbar-nav">
+            <a class="nav-item nav-link" href="/login">Login</a>
+            <a class="nav-item nav-link" href="/register">Register</a>
+          </div>
+          <!--
           <input class="form-control" name="username" type="text" placeholder="Username" style="margin-right: 0.5rem;">
           <button class="btn btn-outline-dark" type="submit" formaction="/login">Login</button>
+          -->
         <% } else { %>
+          <form class="d-flex" method="POST">
           <div class="navbar container">Logged In As: <%= user.email %> User!</div>
-          <button class="btn btn-outline-dark" type="submit" formaction="/logout">Logout</button>          
-        <% } %>
-      </form>         
+          <button class="btn btn-outline-dark" type="submit" formaction="/logout">Logout</button>
+        </form>
+        <% } %>        
+      
   </nav>
 </header>
