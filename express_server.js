@@ -44,11 +44,13 @@ app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
+//Read-index
 app.get("/urls", (req, res) => {
   const templateVars = { urls : urlDatabase };
   res.render("urls_index", templateVars)
 });
 
+//Create
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL;
   let id = '';
@@ -61,10 +63,12 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${id}`);
 });
 
+//Page of creation
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+//Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
   const id = req.params.shortURL;
 
@@ -74,7 +78,18 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");  
 });
 
+//Update
+app.post("/urls/:shortURL", (req, res) => {
+  const id = req.params.shortURL;
+  const newURL = req.body.newURL;
 
+  if (urlDatabase[id]){
+    urlDatabase[id] = newURL;
+  }
+  res.redirect(`/urls/${id}`);
+});
+
+//Read-detail
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
 
@@ -86,6 +101,7 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 });
 
+//Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
   if (urlDatabase[req.params.shortURL]) {
     res.redirect(urlDatabase[req.params.shortURL]);
@@ -94,6 +110,8 @@ app.get("/u/:shortURL", (req, res) => {
   }
 });
 
+
+//Should delete? -start
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
@@ -111,6 +129,7 @@ app.get("/set", (req, res) => {
  app.get("/fetch", (req, res) => {
   res.send(`a = ${a}`);
 });
+//Should delete? -end
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
