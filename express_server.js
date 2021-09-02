@@ -15,11 +15,13 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
-/*
-62 == count[0-9] + count[A-Z] + count[a-z]
-decimal 48 == '0' in utf-8
-decimal 65 == 'A' in utf-8
-decimal 97 == 'a' in utf-8
+// 62 == count[0-9] + count[A-Z] + count[a-z]
+// decimal 48 == '0' in utf-8
+// decimal 65 == 'A' in utf-8
+// decimal 97 == 'a' in utf-8
+/**
+ * @param {Number} len - length of random-string
+ * @returns {String} random-string
 */
 const generateRandomString = (len = 6) => {
   let randomStr = '';
@@ -107,6 +109,17 @@ app.get("/u/:shortURL", (req, res) => {
   } else {
     res.redirect("/urls");
   }
+});
+
+app.get("/register", (req, res) => {
+  const templateVars = { username: req.cookies["username"]};
+  res.render('urls_register', templateVars);
+});
+
+app.post("/register", (req, res) => {
+  const templateVars = { username: req.cookies["username"]};
+  console.log(req.body.email, req.body.password);
+  res.render('urls_register', templateVars);
 });
 
 //Login
