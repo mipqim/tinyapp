@@ -15,6 +15,32 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "jI8Njdd": {
+    id: "jI8Njdd", 
+    email: "admin@example.com", 
+    password: "1234"
+  },
+  "kST6Rs1": {
+    id: "kST6Rs1", 
+    email: "master@example.com", 
+    password: "5678"
+  }
+};
+
+const errMsgs = {
+  ERRUSR001: "Email address is already being used.",
+  ERRUSR002: "Email address or Password can not be empty."
+};
+/*
+for (var planet in planetMoons) {
+  // additional filter for object properties:
+  if (planetMoons.hasOwnProperty(planet)) {
+    //  ...
+  }
+}
+*/
+
 // 62 == count[0-9] + count[A-Z] + count[a-z]
 // decimal 48 == '0' in utf-8
 // decimal 65 == 'A' in utf-8
@@ -36,17 +62,12 @@ const generateRandomString = (len = 6) => {
     }
     randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding with utf-8
   }
-
-  if (urlDatabase[randomStr]) {
-    randomStr = generateRandomString(len);
-  }
-
   return randomStr;
 }
 
 //Read-index
 app.get("/urls", (req, res) => {
-  const templateVars = {username: req.cookies["username"], urls : urlDatabase};
+  const templateVars = {user: users[req.cookies["user_id"]], urls : urlDatabase};
   res.render("urls_index", templateVars)
 });
 
@@ -56,24 +77,26 @@ app.post("/urls", (req, res) => {
   let id = '';
   if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
     id = generateRandomString(6);
+    while (urlDatabase[id]) {
+      id = generateRandomString(6);
+    }
     urlDatabase[id] = longURL;
-  } else {
-    id = Object.keys(urlDatabase).find(key => object[key] === longURL);
+  } else { //if longUrl exist just redirect with id
+    id = Object.keys(urlDatabase).find(key => urlDatabase[key] === longURL);
   }
   res.redirect(`/urls/${id}`);
 });
 
 //Page of creation
 app.get("/urls/new", (req, res) => {
-  const templateVars = {username: req.cookies["username"]};
+  const templateVars = { user: users[req.cookies["user_id"]]};
   res.render("urls_new", templateVars);
 });
 
 //Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
   const id = req.params.shortURL;
-
-  if (urlDatabase[id]){
+  if (urlDatabase.hasOwnProperty(id)){
     delete urlDatabase[id];
   } 
   res.redirect("/urls");  
@@ -84,7 +107,7 @@ app.post("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
 
-  if (urlDatabase[id]){
+  if (urlDatabase.hasOwnProperty(id)){
     urlDatabase[id] = newURL;
   }
   res.redirect(`/urls/${id}`);
@@ -94,8 +117,8 @@ app.post("/urls/:shortURL", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
 
-  if (urlDatabase[id]){
-    const templateVars = { username: req.cookies["username"], shortURL : id, longURL : urlDatabase[id]};
+  if (urlDatabase.hasOwnProperty(id)){
+    const templateVars = { user: users[req.cookies["user_id"]], shortURL : id, longURL : urlDatabase[id]};
     res.render("urls_show", templateVars)
   } else {
     res.redirect("/urls");
@@ -104,39 +127,92 @@ app.get("/urls/:shortURL", (req, res) => {
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  if (urlDatabase[req.params.shortURL]) {
+  if (urlDatabase.hasOwnProperty(req.params.shortURL)) {
     res.redirect(urlDatabase[req.params.shortURL]);
   } else {
     res.redirect("/urls");
   }
 });
 
+//Register User-view
 app.get("/register", (req, res) => {
-  const templateVars = { username: req.cookies["username"]};
+  //should block if user already login or has user-info in cookie?
+  const templateVars = { user: users[req.cookies["user_id"]]};
   res.render('urls_register', templateVars);
 });
 
+//Register User
 app.post("/register", (req, res) => {
-  const templateVars = { username: req.cookies["username"]};
-  console.log(req.body.email, req.body.password);
-  res.render('urls_register', templateVars);
+  const templateVars = { user: users[req.cookies["user_id"]]};
+  const email = req.body.email;
+  const password = req.body.password;
+
+  if (userExists(email)) {
+    errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
+    return;
+  }
+  if (email && password) {
+    let id = generateRandomString(7);
+    while (users.hasOwnProperty(id)) {
+      id = generateRandomString(7);
+    }
+    // should check duplicate email?
+    users[id] = {
+      'id' : id,
+      'email' : email,
+      'password' : password  
+    };
+    res.cookie('user_id', id); 
+    res.redirect("/urls");  
+    return;
+  } else {
+    errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
+    return;  
+  }
 });
+
+
+const errorHandler = (req, res, renderEJS, errMsg) => {
+  const templateVars = { 
+    user: users[req.cookies["user_id"]],
+    'errMsg': errMsg
+  };
+  res.render(renderEJS, templateVars);
+  return;
+};
+
+/**
+ * @param {String} email 
+ * @return {boolean}
+ */
+const userExists = (inputEmail) => {  
+  for (userId in users) {
+    if (users[userId].email === inputEmail) {
+      return true;
+    }    
+  }
+  return false;
+};
+
 
 //Login
 app.post("/login", (req, res) => {
   const username = req.body.username;
   res.cookie('username', username); 
-  res.redirect("/urls");  
+  res.redirect("/urls");
 });
 
 //Logout
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");  
 });
 
 
+
+////////////////////////////////////////////////////////////
 //Should delete? -start
+////////////////////////////////////////////////////////////
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -158,7 +234,9 @@ app.get("/set", (req, res) => {
  app.get("/fetch", (req, res) => {
   res.send(`a = ${a}`);
 });
+////////////////////////////////////////////////////////////
 //Should delete? -end
+////////////////////////////////////////////////////////////
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);

@@ -1,4 +1,14 @@
 <header>
+  <%
+  if(typeof errMsg !== "undefined"){
+  %>
+    <div class="alert alert-danger alert-dismissible mb-0">
+      <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+      <strong><%= errMsg %></strong>
+    </div>
+  <%  
+  }
+  %>
   <nav class="navbar navbar-expand-md navbar-dark bg-success">
       <a class="navbar-brand" href="/urls">TinyApp</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
@@ -11,11 +21,11 @@
         </div>
       </div>
       <form class="d-flex" method="POST">
-        <% if (!username) { %>
+        <% if (!user || !user['email']) { %>
           <input class="form-control" name="username" type="text" placeholder="Username" style="margin-right: 0.5rem;">
           <button class="btn btn-outline-dark" type="submit" formaction="/login">Login</button>
         <% } else { %>
-          <div class="navbar container">Logged In As: <%= username %> User!</div>
+          <div class="navbar container">Logged In As: <%= user.email %> User!</div>
           <button class="btn btn-outline-dark" type="submit" formaction="/logout">Logout</button>          
         <% } %>
       </form>         
