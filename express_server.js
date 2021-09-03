@@ -15,7 +15,7 @@ const urlDatabase = {
     longURL: "https://www.tsn.ca",
     userID: "jI8Njdd"
   },
-    i3BoGr: {
+  i3BoGr: {
     longURL: "https://www.google.ca",
     userID: "jI8Njdd"
   }
@@ -39,54 +39,59 @@ const errMsgs = {
   ERR_S_USR002: "Email address or Password can not be empty.",
   ERR_S_USR003: "User is already logged in.",
   ERR_S_USR004: "Login is needed to create new URL.",
-  ERR_S_URL005: "Short URL doesn't exist.",
-  ERR_S_URL006: "Long URL is someting wrong."
+  ERR_S_USR005: "Login is needed to see short URL",
+  ERR_S_USR006: "Login is needed to delete short URL",
+  ERR_S_USR007: "Login is needed to update short URL",
+  ERR_S_USR008: "Login is needed",
+  ERR_S_URL001: "Short URL doesn't exist.",
+  ERR_S_URL002: "Long URL is someting wrong.",
+  ERR_S_URL003: "Long URL is empty.",
+  ERR_S_URL004: "Long URL format is not valid."
 };
-
-// 62 == count[0-9] + count[A-Z] + count[a-z]
-// decimal 48 == '0' in utf-8
-// decimal 65 == 'A' in utf-8
-// decimal 97 == 'a' in utf-8
-/**
- * @param {Number} len - length of random-string
- * @returns {String} random-string
-*/
-const generateRandomString = (len = 6) => {
-  let randomStr = '';
-
-  for (let i = 0; i < len; i++) {
-    let charNum = Math.floor(Math.random() * 62) + 48;
-    if (charNum > 57) { //48 [start position of numbers] + 9 [0 to 9]
-      charNum += 7;
-    }
-    if (charNum > 90) { //48+9+7+26
-      charNum += 6;
-    }
-    randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding with utf-8
-  }
-  return randomStr;
-}
 
 //Read-index
 app.get("/urls", (req, res) => {
-  const templateVars = {user: users[req.cookies["user_id"]], urls : urlDatabase};
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR008);
+    return;
+  }
+
+  const userID = req.cookies["user_id"];
+  const templateVars = {user: users[userID], urls : urlsForUser(userID)};
   res.render("urls_index", templateVars)
 });
 
 //Create URL
 app.post("/urls", (req, res) => {
-  const longURL = req.body.longURL;
-  let id = '';
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR004);
+    return;
+  }
 
-  // Should find existing long URL the deny to create URL?
+  const longURL = req.body.longURL;
+  if (!longURL.trim()) {
+    errorHandler(req, res, "urls_new", errMsgs.ERR_S_URL003);
+    return;
+  }
+  if (!isValidUrl(longURL)){
+    errorHandler(req, res, "urls_new", errMsgs.ERR_S_URL004);
+    return;    
+  }
+
+  let id = '';
+  // Should find existing long URL the deny to create URL by userId?
   id = generateRandomString(6);
   while (urlDatabase[id]) {
     id = generateRandomString(6);
   }
   urlDatabase[id] = {
     longURL,
-    userID: users[req.cookies["user_id"]]
+    userID: req.cookies["user_id"]
   };  
+
+ 
+//TBDTBD userid, long URL check
+
   // if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
   //   id = generateRandomString(6);
   //   while (urlDatabase[id]) {
@@ -105,21 +110,28 @@ app.post("/urls", (req, res) => {
 
 //Create URL-view
 app.get("/urls/new", (req, res) => {  
-  if (!users[req.cookies["user_id"]]) {
+  if (!userLogin(req)) {
     errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR004);
     return;
   }
+
   const templateVars = { user: users[req.cookies["user_id"]]};
   res.render("urls_new", templateVars);
 });
 
 //Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR006);
+    return;
+  }
+
+  const userId = req.cookies["user_id"];
   const id = req.params.shortURL;
-  if (urlDatabase.hasOwnProperty(id)){
+  if (hasOwnShortId(id, userId)) {
     delete urlDatabase[id];
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL001, {urls : urlDatabase});
     return;
   }
   res.redirect("/urls");  
@@ -127,14 +139,22 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //Update
 app.post("/urls/:shortURL", (req, res) => {
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR007);
+    return;
+  }
+
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
-  if (urlDatabase.hasOwnProperty(id)){
+  const userId = req.cookies["user_id"];
+  console.log(urlDatabase);
+  if (hasOwnShortId(id, userId)) {
     urlDatabase[id] = {
-      longURL : newURL
+      longURL : newURL,
+      userID : userId
     };
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL001, {urls : urlDatabase});
     return;
   }
   res.redirect(`/urls/${id}`);
@@ -142,50 +162,44 @@ app.post("/urls/:shortURL", (req, res) => {
 
 //Read-detail
 app.get("/urls/:shortURL", (req, res) => {
-  const id = req.params.shortURL;
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR005);
+    return;
+  }
 
-  if (urlDatabase.hasOwnProperty(id)){
-    const templateVars = { user: users[req.cookies["user_id"]], shortURL : id, longURL : urlDatabase[id].longURL};
+  const userId = req.cookies["user_id"];
+  const id = req.params.shortURL;  
+  if (hasOwnShortId(id, userId)){
+    const templateVars = { user: users[userId], shortURL : id, longURL : urlDatabase[id].longURL};
     res.render("urls_show", templateVars)
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL005, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", id +" / "  +userId+" / " +errMsgs.ERR_S_URL001+" get", {urls : urlDatabase});
     return;
   }
 });
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-
-  console.log('req.params.shortURL->',req.params.shortURL);  
-  console.log(urlDatabase.hasOwnProperty(req.params.shortURL));
-
-  console.log('shortURL->',shortURL);  
-  console.log(urlDatabase.hasOwnProperty(shortURL));
-
-  
-  if (urlDatabase.hasOwnProperty(shortURL)) {
-    res.redirect(urlDatabase[shortURL].longURL);
-  } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL006, {urls : urlDatabase});
+  if (!userLogin(req)) {
+    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR008);
     return;
   }
-  // if (urlDatabase.hasOwnProperty(req.params.shortURL)) {
-  //   res.redirect(urlDatabase[req.params.shortURL].longURL);
-  // } else {
-  //   errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL006, {urls : urlDatabase});
-  //   return;
-  // }
+
+  const shortURL = req.params.shortURL;  
+  if (hasOwnShortId(shortURL, ureq.cookies["user_id"])) {
+    res.redirect(urlDatabase[shortURL].longURL);
+  } else {
+    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL002, {urls : urlDatabase});
+    return;
+  }
 });
 
 //Register User-view
 app.get("/register", (req, res) => {
-//  const templateVars = { user: users[req.cookies["user_id"]]};
-  if (users[req.cookies["user_id"]]) {
+  if (userLogin(req)) {
     errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
     return;
   }
-  // res.render('urls_register', templateVars);
   res.render('urls_register');
 });
 
@@ -220,7 +234,7 @@ const checkRegistInfo = (email, password) => {
     }
   }
   return false;
-}
+};
 
 const errorHandler = (req, res, renderEJS, errMsg, obj) => {
   const templateVars = { 
@@ -237,7 +251,7 @@ const errorHandler = (req, res, renderEJS, errMsg, obj) => {
 
 //Login-view
 app.get("/login", (req, res) => {
-  if (users[req.cookies["user_id"]]) {
+  if (userLogin(req)) {
     errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
     return;
   }
@@ -266,18 +280,39 @@ app.post("/logout", (req, res) => {
   res.redirect("/urls");
 });
 
-// /**
-//  * @param {String} email 
-//  * @return {boolean}
-//  */
-//  const userExists = (inputEmail) => {  
-//   for (userId in users) {
-//     if (users[userId].email === inputEmail) {
-//       return true;
-//     }    
-//   }
-//   return false;
-// };
+
+// 62 == count[0-9] + count[A-Z] + count[a-z]
+// decimal 48 == '0' in utf-8
+// decimal 65 == 'A' in utf-8
+// decimal 97 == 'a' in utf-8
+/**
+ * @param {Number} len - length of random-string
+ * @returns {String} random-string
+*/
+const generateRandomString = (len = 6) => {
+  let randomStr = '';
+
+  for (let i = 0; i < len; i++) {
+    let charNum = Math.floor(Math.random() * 62) + 48;
+    if (charNum > 57) { //48 [start position of numbers] + 9 [0 to 9]
+      charNum += 7;
+    }
+    if (charNum > 90) { //48+9+7+26
+      charNum += 6;
+    }
+    randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding with utf-8
+  }
+  return randomStr;
+}
+
+const userLogin = (req) => {
+  //pretend to use curl with invalid userid
+  return users[req.cookies["user_id"]];
+};
+
+const hasOwnShortId = (shortUrl, userId) => {
+  return urlDatabase.hasOwnProperty(shortUrl) && urlDatabase[shortUrl].userID === userId;
+};
 
 /**
  * @param {String} email 
@@ -292,36 +327,26 @@ const getUserObj = (inputEmail) => {
   return false;
 };
 
+const urlsForUser = (id) => {
+  let urls={};
+  for (k in urlDatabase) {
+    if (urlDatabase[k].userID === id) {
+      urls[k] = urlDatabase[k];
+    }
+  }
+  return urls;
+};
 
-
-////////////////////////////////////////////////////////////
-//Should delete? -start
-////////////////////////////////////////////////////////////
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.get("/hello", (req, res) => {
-  const templateVars = { greeting : 'Hello World!' };
-  res.render('hello_world', templateVars);
-});
-
-app.get("/set", (req, res) => {
-  const a = 1;
-  res.send(`a = ${a}`);
-});
- 
- app.get("/fetch", (req, res) => {
-  res.send(`a = ${a}`);
-});
-////////////////////////////////////////////////////////////
-//Should delete? -end
-////////////////////////////////////////////////////////////
+//better to be on view level?
+const isValidUrl = (url) => {
+  try {
+    new URL(url);
+  } catch (e) {
+    return false;
+  }
+  return true;
+};
 
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
+  console.log(`Simple Tiny app listening on port ${PORT}!`);
 });
