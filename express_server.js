@@ -4,6 +4,7 @@ const PORT = 8080;
 
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 
 app.use(bodyParser.urlencoded({extended: true}));
 //app.use(express.urlencoded({extended: true}));
@@ -25,12 +26,12 @@ const users = {
   "jI8Njdd": {
     id: "jI8Njdd", 
     email: "jeff.shjeon@gmail.com", 
-    password: "1111"
+    password: "$2b$10$NX0v98lKM2u.fJECvHdUouR7maVlo5tobWBHmUxFTt4oe.F2r/j2y"
   },
   "kST6Rs1": {
     id: "kST6Rs1", 
     email: "master@example.com", 
-    password: "5678"
+    password: "$2b$10$WW0NsLRTzhDPis7l9/qHwOKoKUnXghGISASMwN2dnwx8vVZ3tj47K"
   }
 };
 
@@ -147,7 +148,6 @@ app.post("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
   const userId = req.cookies["user_id"];
-  console.log(urlDatabase);
   if (hasOwnShortId(id, userId)) {
     urlDatabase[id] = {
       longURL : newURL,
@@ -207,8 +207,9 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
 
-  if (checkRegistInfo(email, password)) {
+  if (checkRegistInfo(email, hashedPassword)) {
     let id = generateRandomString(7);
     while (users.hasOwnProperty(id)) {
       id = generateRandomString(7);
@@ -216,8 +217,9 @@ app.post("/register", (req, res) => {
     users[id] = {
       'id' : id,
       'email' : email,
-      'password' : password  
+      'password' : hashedPassword  
     };
+    console.log(users);
     res.cookie('user_id', id); 
     res.redirect("/urls");  
   } else {
@@ -265,7 +267,8 @@ app.post("/login", (req, res) => {
   const user = getUserObj(email);
 
   if (user) {
-    if (user.password === password) {
+//    if (user.password === password) {
+    if (bcrypt.compareSync(password, user.password)) {
       res.cookie('user_id', user.id); 
       res.redirect("/urls");
       return;
@@ -277,7 +280,7 @@ app.post("/login", (req, res) => {
 //Logout
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 
