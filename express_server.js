@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const PORT = 8080; 
+const PORT = 8080;
 
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
@@ -11,7 +11,7 @@ app.set("view engine", "ejs");
 app.use(cookieSession({
   name: 'session',
   keys: ['overTheRainbow']
-}))
+}));
 
 const { generateRandomString, userLogin, hasOwnShortId, getUserObj, urlsForUser, isValidUrl } = require('./helpers');
 
@@ -30,15 +30,15 @@ const urlDatabase = {
   }
 };
 
-const users = { 
+const users = {
   "jI8Njdd": {
-    id: "jI8Njdd", 
-    email: "jeff.shjeon@gmail.com", 
+    id: "jI8Njdd",
+    email: "jeff.shjeon@gmail.com",
     password: "$2b$10$NX0v98lKM2u.fJECvHdUouR7maVlo5tobWBHmUxFTt4oe.F2r/j2y"
   },
   "kST6Rs1": {
-    id: "kST6Rs1", 
-    email: "master@example.com", 
+    id: "kST6Rs1",
+    email: "master@example.com",
     password: "$2b$10$WW0NsLRTzhDPis7l9/qHwOKoKUnXghGISASMwN2dnwx8vVZ3tj47K"
   }
 };
@@ -66,7 +66,7 @@ app.get("/urls", (req, res) => {
   }
   const userID = req.session.user_id;
   const templateVars = {user: users[userID], urls: urlsForUser(userID ,urlDatabase)};
-  res.render("urls_index", templateVars)
+  res.render("urls_index", templateVars);
 });
 
 //Create URL
@@ -81,9 +81,9 @@ app.post("/urls", (req, res) => {
     errorHandler(req, res, "urls_new", errMsgs._ERR_S_URL003);
     return;
   }
-  if (!isValidUrl(longURL)){
+  if (!isValidUrl(longURL)) {
     errorHandler(req, res, "urls_new", errMsgs._ERR_S_URL004);
-    return;    
+    return;
   }
 
   let id = '';
@@ -97,12 +97,12 @@ app.post("/urls", (req, res) => {
     userID: req.session.user_id,
     hit: 0,
     insertDate: today.toLocaleDateString()
-  };  
+  };
   res.redirect(`/urls/${id}`);
 });
 
 //Create URL-view
-app.get("/urls/new", (req, res) => {  
+app.get("/urls/new", (req, res) => {
   if (!userLogin(req, users)) {
     errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR004);
     return;
@@ -127,7 +127,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
   }
-  res.redirect("/urls");  
+  res.redirect("/urls");
 });
 
 //Update
@@ -164,10 +164,10 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 
   const userId = req.session.user_id;
-  const id = req.params.shortURL;  
-  if (hasOwnShortId(id, userId, urlDatabase)){
+  const id = req.params.shortURL;
+  if (hasOwnShortId(id, userId, urlDatabase)) {
     const templateVars = { user: users[userId], shortURL : id, longURL : urlDatabase[id].longURL, hit: urlDatabase[id].hit, insertDate: urlDatabase[id].insertDate};
-    res.render("urls_show", templateVars)
+    res.render("urls_show", templateVars);
   } else {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
@@ -181,7 +181,7 @@ app.get("/u/:shortURL", (req, res) => {
     return;
   }
 
-  const shortURL = req.params.shortURL;  
+  const shortURL = req.params.shortURL;
   if (hasOwnShortId(shortURL, req.session.user_id, urlDatabase)) {
     urlDatabase[shortURL].hit++;
     res.redirect(urlDatabase[shortURL].longURL);
@@ -214,18 +214,18 @@ app.post("/register", (req, res) => {
     users[id] = {
       'id' : id,
       'email' : email,
-      'password' : hashedPassword  
+      'password' : hashedPassword
     };
-    req.session.user_id = id; 
-    res.redirect("/urls");  
+    req.session.user_id = id;
+    res.redirect("/urls");
   } else {
     res.status(400).end();
-  } 
+  }
 });
 
 const checkRegistInfo = (email, password) => {
   if (email.trim() && password.trim()) {
-    // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
+    // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);
     if (!getUserObj(email, users)) {
       //errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
       return true;
@@ -255,7 +255,7 @@ app.post("/login", (req, res) => {
       res.redirect("/urls");
       return;
     }
-  } 
+  }
   res.status(403).end();
 });
 
@@ -276,11 +276,11 @@ app.get("/", (req, res) => {
 
 //Is it a helper function?
 const errorHandler = (req, res, renderEJS, errMsg, obj) => {
-  const templateVars = { 
+  const templateVars = {
     user: users[req.session.user_id],
     'errMsg': errMsg
   };
-  for (el in obj) {
+  for (let el in obj) {
     templateVars[el] = obj[el];
   }
   res.render(renderEJS, templateVars);

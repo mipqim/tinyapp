@@ -20,7 +20,7 @@ const generateRandomString = (len = 6) => {
     randomStr += decodeURI(`%${charNum.toString(16)}`); //decimal to hexadecial then decoding with utf-8
   }
   return randomStr;
-}
+};
 
 const userLogin = (req, users) => {
   //pretend to use curl with invalid userid
@@ -32,21 +32,21 @@ const hasOwnShortId = (shortUrl, userId, urlDatabase) => {
 };
 
 /**
- * @param {String} email 
+ * @param {String} email
  * @returns {(boolean|Object)}
  */
 const getUserObj = (inputEmail, users) => {
-  for (userId in users) {
+  for (let userId in users) {
     if (users[userId].email === inputEmail) {
       return users[userId];
-    }    
+    }
   }
   return false;
 };
 
 const urlsForUser = (id, urlDatabase) => {
-  let urls={};
-  for (k in urlDatabase) {
+  let urls = {};
+  for (let k in urlDatabase) {
     if (urlDatabase[k].userID === id) {
       urls[k] = urlDatabase[k];
     }
