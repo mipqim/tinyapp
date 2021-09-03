@@ -12,13 +12,15 @@
       <div class="card-body">
         <h5 class="card-title">TinyURL for: <%= longURL %></h5>
         <p class="card-text">Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %></a></p>
+        <p class="card-text">Hit: <%= hit %></p>
+        <p class="card-text">Creation Date: <%= insertDate %></p>
       </div>   
       <form action="/urls/<%= shortURL %>" method="POST">
       <div class="card-footer">
         <h3 class="card-title">Edit</h3>
         <p class="card-text">          
           <label for="newURL">New URL: </label>
-          <input type="text" name="newURL" placeholder="<%= longURL %>">
+          <input type="text" name="newURL" placeholder="<%= longURL %>" value="<%= longURL %>">
           <button type="submit" class="btn btn-primary">Submit</button>
         </p>
       </div>    

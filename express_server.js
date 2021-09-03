@@ -3,22 +3,28 @@ const app = express();
 const PORT = 8080; 
 
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 
 app.use(bodyParser.urlencoded({extended: true}));
-//app.use(express.urlencoded({extended: true}));
 app.set("view engine", "ejs");
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['overTheRainbow']
+}))
 
 const urlDatabase = {
   b6UTxQ: {
     longURL: "https://www.tsn.ca",
-    userID: "jI8Njdd"
+    userID: "jI8Njdd",
+    hit: 11,
+    insertDate: '2020-12-02'
   },
   i3BoGr: {
     longURL: "https://www.google.ca",
-    userID: "jI8Njdd"
+    userID: "jI8Njdd",
+    hit: 100,
+    insertDate: '2021-09-01'
   }
 };
 
@@ -36,103 +42,87 @@ const users = {
 };
 
 const errMsgs = {
-  ERR_S_USR001: "Email address is already being used.",
-  ERR_S_USR002: "Email address or Password can not be empty.",
-  ERR_S_USR003: "User is already logged in.",
-  ERR_S_USR004: "Login is needed to create new URL.",
-  ERR_S_USR005: "Login is needed to see short URL",
-  ERR_S_USR006: "Login is needed to delete short URL",
-  ERR_S_USR007: "Login is needed to update short URL",
-  ERR_S_USR008: "Login is needed",
-  ERR_S_URL001: "Short URL doesn't exist.",
-  ERR_S_URL002: "Long URL is someting wrong.",
-  ERR_S_URL003: "Long URL is empty.",
-  ERR_S_URL004: "Long URL format is not valid."
+  _ERR_S_USR001: "Email address is already being used.",
+  _ERR_S_USR002: "Email address or Password can not be empty.",
+  _ERR_S_USR003: "User is already logged in.",
+  _ERR_S_USR004: "Login is needed to create new URL.",
+  _ERR_S_USR005: "Login is needed to see short URL",
+  _ERR_S_USR006: "Login is needed to delete short URL",
+  _ERR_S_USR007: "Login is needed to update short URL",
+  _ERR_S_USR008: "Login is needed",
+  _ERR_S_URL001: "Short URL doesn't exist.",
+  _ERR_S_URL002: "Long URL is someting wrong.",
+  _ERR_S_URL003: "Long URL is empty.",
+  _ERR_S_URL004: "Long URL format is not valid."
 };
 
 //Read-index
 app.get("/urls", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR008);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR008);
     return;
   }
-
-  const userID = req.cookies["user_id"];
-  const templateVars = {user: users[userID], urls : urlsForUser(userID)};
+  const userID = req.session.user_id;
+  const templateVars = {user: users[userID], urls: urlsForUser(userID ,urlDatabase)};
   res.render("urls_index", templateVars)
 });
 
 //Create URL
 app.post("/urls", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR004);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR004);
     return;
   }
 
   const longURL = req.body.longURL;
   if (!longURL.trim()) {
-    errorHandler(req, res, "urls_new", errMsgs.ERR_S_URL003);
+    errorHandler(req, res, "urls_new", errMsgs._ERR_S_URL003);
     return;
   }
   if (!isValidUrl(longURL)){
-    errorHandler(req, res, "urls_new", errMsgs.ERR_S_URL004);
+    errorHandler(req, res, "urls_new", errMsgs._ERR_S_URL004);
     return;    
   }
 
   let id = '';
-  // Should find existing long URL the deny to create URL by userId?
+  let today = new Date();
   id = generateRandomString(6);
   while (urlDatabase[id]) {
     id = generateRandomString(6);
   }
   urlDatabase[id] = {
     longURL,
-    userID: req.cookies["user_id"]
+    userID: req.session.user_id,
+    hit: 0,
+    insertDate: today.toLocaleDateString()
   };  
-
- 
-//TBDTBD userid, long URL check
-
-  // if (Object.values(urlDatabase).indexOf(longURL) < 0) { //if value already exists
-  //   id = generateRandomString(6);
-  //   while (urlDatabase[id]) {
-  //     id = generateRandomString(6);
-  //   }
-  //   urlDatabase[id] = {
-  //     longURL,
-  //     userID: users[req.cookies["user_id"]]
-  //   };
-  // } else { //if longUrl exist just redirect with id
-  //   //TBDTBDTBDTBDTBDTBDTBD error handler pass
-  //   id = Object.keys(urlDatabase).find(key => urlDatabase[key].longURL === longURL);
-  // }
   res.redirect(`/urls/${id}`);
 });
 
 //Create URL-view
 app.get("/urls/new", (req, res) => {  
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR004);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR004);
     return;
   }
 
-  const templateVars = { user: users[req.cookies["user_id"]]};
+  const templateVars = { user: users[req.session.user_id]};
   res.render("urls_new", templateVars);
 });
 
 //Delete
 app.post("/urls/:shortURL/delete", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR006);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR006);
     return;
   }
 
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const id = req.params.shortURL;
-  if (hasOwnShortId(id, userId)) {
+  if (hasOwnShortId(id, userId, urlDatabase)) {
     delete urlDatabase[id];
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL001, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
   }
   res.redirect("/urls");  
@@ -140,21 +130,25 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //Update
 app.post("/urls/:shortURL", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR007);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR007);
     return;
   }
 
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
-  const userId = req.cookies["user_id"];
-  if (hasOwnShortId(id, userId)) {
+  const userId = req.session.user_id;
+  if (hasOwnShortId(id, userId, urlDatabase)) {
+    const hit = urlDatabase[id].hit;
+    const insertDate = urlDatabase[id].insertDate;
     urlDatabase[id] = {
       longURL : newURL,
-      userID : userId
+      userID : userId,
+      hit : hit,
+      insertDate: insertDate
     };
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL001, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
   }
   res.redirect(`/urls/${id}`);
@@ -162,42 +156,43 @@ app.post("/urls/:shortURL", (req, res) => {
 
 //Read-detail
 app.get("/urls/:shortURL", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR005);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR005);
     return;
   }
 
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const id = req.params.shortURL;  
-  if (hasOwnShortId(id, userId)){
-    const templateVars = { user: users[userId], shortURL : id, longURL : urlDatabase[id].longURL};
+  if (hasOwnShortId(id, userId, urlDatabase)){
+    const templateVars = { user: users[userId], shortURL : id, longURL : urlDatabase[id].longURL, hit: urlDatabase[id].hit, insertDate: urlDatabase[id].insertDate};
     res.render("urls_show", templateVars)
   } else {
-    errorHandler(req, res, "urls_index", id +" / "  +userId+" / " +errMsgs.ERR_S_URL001+" get", {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
   }
 });
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  if (!userLogin(req)) {
-    errorHandler(req, res, "urls_login", errMsgs.ERR_S_USR008);
+  if (!userLogin(req, users)) {
+    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR008);
     return;
   }
 
   const shortURL = req.params.shortURL;  
-  if (hasOwnShortId(shortURL, ureq.cookies["user_id"])) {
+  if (hasOwnShortId(shortURL, req.session.user_id, urlDatabase)) {
+    urlDatabase[shortURL].hit++;
     res.redirect(urlDatabase[shortURL].longURL);
   } else {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_URL002, {urls : urlDatabase});
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
     return;
   }
 });
 
 //Register User-view
 app.get("/register", (req, res) => {
-  if (userLogin(req)) {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
+  if (userLogin(req, users)) {
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_USR003, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
     return;
   }
   res.render('urls_register');
@@ -219,8 +214,7 @@ app.post("/register", (req, res) => {
       'email' : email,
       'password' : hashedPassword  
     };
-    console.log(users);
-    res.cookie('user_id', id); 
+    req.session.user_id = id; 
     res.redirect("/urls");  
   } else {
     res.status(400).end();
@@ -230,7 +224,7 @@ app.post("/register", (req, res) => {
 const checkRegistInfo = (email, password) => {
   if (email.trim() && password.trim()) {
     // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);  
-    if (!getUserObj(email)) {
+    if (!getUserObj(email, users)) {
       //errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
       return true;
     }
@@ -238,23 +232,10 @@ const checkRegistInfo = (email, password) => {
   return false;
 };
 
-const errorHandler = (req, res, renderEJS, errMsg, obj) => {
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-    'errMsg': errMsg
-  };
-  for (el in obj) {
-    templateVars[el] = obj[el];
-  }
-
-  res.render(renderEJS, templateVars);
-  return;
-};
-
 //Login-view
 app.get("/login", (req, res) => {
-  if (userLogin(req)) {
-    errorHandler(req, res, "urls_index", errMsgs.ERR_S_USR003, {urls : urlDatabase});
+  if (userLogin(req, users)) {
+    errorHandler(req, res, "urls_index", errMsgs._ERR_S_USR003, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
     return;
   }
   res.render("urls_login");
@@ -267,9 +248,8 @@ app.post("/login", (req, res) => {
   const user = getUserObj(email);
 
   if (user) {
-//    if (user.password === password) {
     if (bcrypt.compareSync(password, user.password)) {
-      res.cookie('user_id', user.id); 
+      req.session.user_id = user.id;
       res.redirect("/urls");
       return;
     }
@@ -279,7 +259,15 @@ app.post("/login", (req, res) => {
 
 //Logout
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
+  res.redirect("/login");
+});
+
+app.get("/", (req, res) => {
+  if (userLogin(req, users)) {
+    res.redirect("/urls");
+    return;
+  }
   res.redirect("/login");
 });
 
@@ -308,12 +296,12 @@ const generateRandomString = (len = 6) => {
   return randomStr;
 }
 
-const userLogin = (req) => {
+const userLogin = (req, users) => {
   //pretend to use curl with invalid userid
-  return users[req.cookies["user_id"]];
+  return users[req.session.user_id];
 };
 
-const hasOwnShortId = (shortUrl, userId) => {
+const hasOwnShortId = (shortUrl, userId, urlDatabase) => {
   return urlDatabase.hasOwnProperty(shortUrl) && urlDatabase[shortUrl].userID === userId;
 };
 
@@ -321,7 +309,7 @@ const hasOwnShortId = (shortUrl, userId) => {
  * @param {String} email 
  * @returns {(boolean|Object)}
  */
-const getUserObj = (inputEmail) => {
+const getUserObj = (inputEmail, users) => {
   for (userId in users) {
     if (users[userId].email === inputEmail) {
       return users[userId];
@@ -330,7 +318,7 @@ const getUserObj = (inputEmail) => {
   return false;
 };
 
-const urlsForUser = (id) => {
+const urlsForUser = (id, urlDatabase) => {
   let urls={};
   for (k in urlDatabase) {
     if (urlDatabase[k].userID === id) {
@@ -338,6 +326,19 @@ const urlsForUser = (id) => {
     }
   }
   return urls;
+};
+
+//Is it a helper function?
+const errorHandler = (req, res, renderEJS, errMsg, obj) => {
+  const templateVars = { 
+    user: users[req.session.user_id],
+    'errMsg': errMsg
+  };
+  for (el in obj) {
+    templateVars[el] = obj[el];
+  }
+  res.render(renderEJS, templateVars);
+  return;
 };
 
 //better to be on view level?
