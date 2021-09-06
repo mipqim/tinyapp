@@ -9,7 +9,7 @@
 const generateRandomString = (len = 6) => {
   let randomStr = '';
 
-  for (let i = 0; i < len; i++) {
+  for (const i = 0; i < len; i++) {
     let charNum = Math.floor(Math.random() * 62) + 48;
     if (charNum > 57) { //48 [start position of numbers] + 9 [0 to 9]
       charNum += 7;
@@ -23,7 +23,6 @@ const generateRandomString = (len = 6) => {
 };
 
 const userLogin = (req, users) => {
-  //pretend to use curl with invalid userid
   return users[req.session.user_id];
 };
 
@@ -36,7 +35,7 @@ const hasOwnShortId = (shortUrl, userId, urlDatabase) => {
  * @returns {(boolean|Object)}
  */
 const getUserObj = (inputEmail, users) => {
-  for (let userId in users) {
+  for (const userId in users) {
     if (users[userId].email === inputEmail) {
       return users[userId];
     }
@@ -46,7 +45,7 @@ const getUserObj = (inputEmail, users) => {
 
 const urlsForUser = (id, urlDatabase) => {
   let urls = {};
-  for (let k in urlDatabase) {
+  for (const k in urlDatabase) {
     if (urlDatabase[k].userID === id) {
       urls[k] = urlDatabase[k];
     }

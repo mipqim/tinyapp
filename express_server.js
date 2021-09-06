@@ -1,4 +1,5 @@
 const express = require("express");
+const methodOverride = require('method-override');
 const app = express();
 const PORT = 8080;
 
@@ -7,6 +8,7 @@ const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 
 app.use(bodyParser.urlencoded({extended: true}));
+app.use(methodOverride('_method'));
 app.set("view engine", "ejs");
 app.use(cookieSession({
   name: 'session',
@@ -48,12 +50,13 @@ const errMsgs = {
   _ERR_S_USR002: "Email address or Password can not be empty.",
   _ERR_S_USR003: "User is already logged in.",
   _ERR_S_USR004: "Login is needed to create new URL.",
-  _ERR_S_USR005: "Login is needed to see short URL",
-  _ERR_S_USR006: "Login is needed to delete short URL",
-  _ERR_S_USR007: "Login is needed to update short URL",
-  _ERR_S_USR008: "Login is needed",
+  _ERR_S_USR005: "Login is needed to see short URL.",
+  _ERR_S_USR006: "Login is needed to delete short URL.",
+  _ERR_S_USR007: "Login is needed to update short URL.",
+  _ERR_S_USR008: "Login is needed.",
+  _ERR_S_USR009: "Invalid login, please try again.",
   _ERR_S_URL001: "Short URL doesn't exist.",
-  _ERR_S_URL002: "Long URL is someting wrong.",
+  _ERR_S_URL002: "Long URL is something wrong.",
   _ERR_S_URL003: "Long URL is empty.",
   _ERR_S_URL004: "Long URL format is not valid."
 };
@@ -113,7 +116,7 @@ app.get("/urls/new", (req, res) => {
 });
 
 //Delete
-app.post("/urls/:shortURL/delete", (req, res) => {
+app.delete("/urls/:shortURL", (req, res) => {
   if (!userLogin(req, users)) {
     errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR006);
     return;
@@ -131,7 +134,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 });
 
 //Update
-app.post("/urls/:shortURL", (req, res) => {
+app.put("/urls/:shortURL", (req, res) => {
   if (!userLogin(req, users)) {
     errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR007);
     return;
@@ -153,7 +156,7 @@ app.post("/urls/:shortURL", (req, res) => {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
     return;
   }
-  res.redirect(`/urls/${id}`);
+  res.redirect("/urls");
 });
 
 //Read-detail
@@ -176,18 +179,12 @@ app.get("/urls/:shortURL", (req, res) => {
 
 //Redirect to longURL
 app.get("/u/:shortURL", (req, res) => {
-  if (!userLogin(req, users)) {
-    errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR008);
-    return;
-  }
-
   const shortURL = req.params.shortURL;
-  if (hasOwnShortId(shortURL, req.session.user_id, urlDatabase)) {
+  if(urlDatabase[shortURL]) {
     urlDatabase[shortURL].hit++;
     res.redirect(urlDatabase[shortURL].longURL);
   } else {
-    errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
-    return;
+    return res.status(400).send(`>>> ${errMsgs._ERR_S_URL001} <<<<`);
   }
 });
 
@@ -206,33 +203,28 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
   const hashedPassword = bcrypt.hashSync(password, 10);
 
-  if (checkRegistInfo(email, hashedPassword)) {
-    let id = generateRandomString(7);
-    while (users.hasOwnProperty(id)) {
-      id = generateRandomString(7);
-    }
-    users[id] = {
-      'id' : id,
-      'email' : email,
-      'password' : hashedPassword
-    };
-    req.session.user_id = id;
-    res.redirect("/urls");
-  } else {
-    res.status(400).end();
+  if (!email.trim() || !password.trim()) {
+    errorHandler(req, res, "urls_register", errMsgs._ERR_S_USR002, {triedEmail : email});
+    return;
   }
-});
+  if (getUserObj(email, users)) {
+    errorHandler(req, res, "urls_register", errMsgs._ERR_S_USR001, {triedEmail : email});
+    return;
+  }
 
-const checkRegistInfo = (email, password) => {
-  if (email.trim() && password.trim()) {
-    // errorHandler(req, res, "urls_register", errMsgs.ERRUSR002);
-    if (!getUserObj(email, users)) {
-      //errorHandler(req, res, "urls_register", errMsgs.ERRUSR001);
-      return true;
-    }
+  let id = generateRandomString(7);
+  while (users.hasOwnProperty(id)) {
+    id = generateRandomString(7);
   }
-  return false;
-};
+  users[id] = {
+    'id' : id,
+    'email' : email,
+    'password' : hashedPassword
+  };
+  req.session.user_id = id;
+  res.redirect("/urls");
+ 
+});
 
 //Login-view
 app.get("/login", (req, res) => {
@@ -256,7 +248,7 @@ app.post("/login", (req, res) => {
       return;
     }
   }
-  res.status(403).end();
+  errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR009, {triedEmail : email});  
 });
 
 //Logout
@@ -265,7 +257,7 @@ app.post("/logout", (req, res) => {
   res.redirect("/login");
 });
 
-//website root
+//Homepage
 app.get("/", (req, res) => {
   if (userLogin(req, users)) {
     res.redirect("/urls");
@@ -274,13 +266,12 @@ app.get("/", (req, res) => {
   res.redirect("/login");
 });
 
-//Is it a helper function?
 const errorHandler = (req, res, renderEJS, errMsg, obj) => {
   const templateVars = {
     user: users[req.session.user_id],
     'errMsg': errMsg
   };
-  for (let el in obj) {
+  for (const el in obj) {
     templateVars[el] = obj[el];
   }
   res.render(renderEJS, templateVars);
