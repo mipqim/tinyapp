@@ -15,7 +15,13 @@ app.use(cookieSession({
   keys: ['overTheRainbow']
 }));
 
-const { generateRandomString, userLogin, hasOwnShortId, getUserObj, urlsForUser, isValidUrl } = require('./helpers');
+const { generateRandomString, 
+        userLogin, 
+        hasOwnShortId, 
+        getUserObj, 
+        urlsForUser, 
+        isValidUrl 
+      } = require('./helpers');
 
 const urlDatabase = {
   b6UTxQ: {
