@@ -15,32 +15,17 @@ app.use(cookieSession({
   keys: ['overTheRainbow']
 }));
 
-const { generateRandomString, 
+const { urlDatabase, 
+        users, 
+        errMsgs, 
+        generateRandomString, 
         userLogin, 
         hasOwnShortId, 
         getUserObj, 
         urlsForUser, 
-        isValidUrl 
+        isValidUrl, 
+        errorHandler 
       } = require('./helpers');
-
-const urlDatabase = {};
-const users = {};
-
-const errMsgs = {
-  _ERR_S_USR001: "Email address is already being used.",
-  _ERR_S_USR002: "Email address or Password can not be empty.",
-  _ERR_S_USR003: "User is already logged in.",
-  _ERR_S_USR004: "Login is needed to create new URL.",
-  _ERR_S_USR005: "Login is needed to see short URL.",
-  _ERR_S_USR006: "Login is needed to delete short URL.",
-  _ERR_S_USR007: "Login is needed to update short URL.",
-  _ERR_S_USR008: "Login is needed.",
-  _ERR_S_USR009: "Invalid login, please try again.",
-  _ERR_S_URL001: "Short URL doesn't exist.",
-  _ERR_S_URL002: "Long URL is something wrong.",
-  _ERR_S_URL003: "Long URL is empty.",
-  _ERR_S_URL004: "Long URL format is not valid."
-};
 
 //Read-index
 app.get("/urls", (req, res) => {
@@ -126,9 +111,9 @@ app.put("/urls/:shortURL", (req, res) => {
     const hit = urlDatabase[id].hit;
     const insertDate = urlDatabase[id].insertDate;
     urlDatabase[id] = {
-      longURL : newURL,
-      userID : userId,
-      hit : hit,
+      longURL: newURL,
+      userID: userId,
+      hit: hit,
       insertDate: insertDate
     };
   } else {
@@ -148,7 +133,12 @@ app.get("/urls/:shortURL", (req, res) => {
   const userId = req.session.user_id;
   const id = req.params.shortURL;
   if (hasOwnShortId(id, userId, urlDatabase)) {
-    const templateVars = { user: users[userId], shortURL : id, longURL : urlDatabase[id].longURL, hit: urlDatabase[id].hit, insertDate: urlDatabase[id].insertDate};
+    const templateVars = { user: users[userId], 
+                           shortURL: id, 
+                           longURL: urlDatabase[id].longURL, 
+                           hit: urlDatabase[id].hit, 
+                           insertDate: urlDatabase[id].insertDate
+                          };
     res.render("urls_show", templateVars);
   } else {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_URL001, {urls: urlsForUser(userId ,urlDatabase)});
@@ -239,19 +229,6 @@ app.get("/", (req, res) => {
   }
   res.redirect("/login");
 });
-
-//Pass an error message and object to a next webpage of Tinyapp
-const errorHandler = (req, res, renderEJS, errMsg, obj) => {
-  const templateVars = {
-    user: users[req.session.user_id],
-    'errMsg': errMsg
-  };
-  for (const el in obj) {
-    templateVars[el] = obj[el];
-  }
-  res.render(renderEJS, templateVars);
-  return;
-};
 
 app.listen(PORT, () => {
   console.log(`Simple Tiny app listening on port ${PORT}!`);

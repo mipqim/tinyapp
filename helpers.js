@@ -1,3 +1,22 @@
+const urlDatabase = {};
+const users = {};
+
+const errMsgs = {
+  _ERR_S_USR001: "Email address is already being used.",
+  _ERR_S_USR002: "Email address or Password can not be empty.",
+  _ERR_S_USR003: "User is already logged in.",
+  _ERR_S_USR004: "Login is needed to create new URL.",
+  _ERR_S_USR005: "Login is needed to see short URL.",
+  _ERR_S_USR006: "Login is needed to delete short URL.",
+  _ERR_S_USR007: "Login is needed to update short URL.",
+  _ERR_S_USR008: "Login is needed.",
+  _ERR_S_USR009: "Invalid login, please try again.",
+  _ERR_S_URL001: "Short URL doesn't exist.",
+  _ERR_S_URL002: "Long URL is something wrong.",
+  _ERR_S_URL003: "Long URL is empty.",
+  _ERR_S_URL004: "Long URL format is not valid."
+};
+
 // 62 == count[0-9] + count[A-Z] + count[a-z]
 // decimal 48 == '0' in utf-8
 // decimal 65 == 'A' in utf-8
@@ -62,4 +81,27 @@ const isValidUrl = (url) => {
   return true;
 };
 
-module.exports = { generateRandomString, userLogin, hasOwnShortId, getUserObj, urlsForUser, isValidUrl };
+//Pass an error message and object to a next webpage of Tinyapp
+const errorHandler = (req, res, renderEJS, errMsg, obj) => {
+  const templateVars = {
+    user: users[req.session.user_id],
+    'errMsg': errMsg
+  };
+  for (const el in obj) {
+    templateVars[el] = obj[el];
+  }
+  res.render(renderEJS, templateVars);
+  return;
+};
+
+module.exports = { urlDatabase, 
+                   users, 
+                   errMsgs, 
+                   generateRandomString, 
+                   userLogin, 
+                   hasOwnShortId, 
+                   getUserObj, 
+                   urlsForUser, 
+                   isValidUrl, 
+                   errorHandler 
+                 };
