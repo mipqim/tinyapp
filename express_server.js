@@ -121,7 +121,6 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
-//Delete
 app.delete("/urls/:shortURL", (req, res) => {
   if (!userLogin(req, users)) {
     errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR006);
@@ -139,7 +138,6 @@ app.delete("/urls/:shortURL", (req, res) => {
   res.redirect("/urls");
 });
 
-//Update
 app.put("/urls/:shortURL", (req, res) => {
   if (!userLogin(req, users)) {
     errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR007);
@@ -194,7 +192,6 @@ app.get("/u/:shortURL", (req, res) => {
   }
 });
 
-//Register User-view
 app.get("/register", (req, res) => {
   if (userLogin(req, users)) {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_USR003, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
@@ -203,7 +200,6 @@ app.get("/register", (req, res) => {
   res.render('urls_register');
 });
 
-//Register User
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -232,7 +228,6 @@ app.post("/register", (req, res) => {
  
 });
 
-//Login-view
 app.get("/login", (req, res) => {
   if (userLogin(req, users)) {
     errorHandler(req, res, "urls_index", errMsgs._ERR_S_USR003, {urls: urlsForUser(req.session.user_id ,urlDatabase)});
@@ -241,7 +236,6 @@ app.get("/login", (req, res) => {
   res.render("urls_login");
 });
 
-//Login
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -257,7 +251,6 @@ app.post("/login", (req, res) => {
   errorHandler(req, res, "urls_login", errMsgs._ERR_S_USR009, {triedEmail : email});  
 });
 
-//Logout
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect("/login");
@@ -272,6 +265,7 @@ app.get("/", (req, res) => {
   res.redirect("/login");
 });
 
+//Pass an error message and object to a next webpage of Tinyapp
 const errorHandler = (req, res, renderEJS, errMsg, obj) => {
   const templateVars = {
     user: users[req.session.user_id],

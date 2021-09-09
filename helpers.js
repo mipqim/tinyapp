@@ -53,7 +53,6 @@ const urlsForUser = (id, urlDatabase) => {
   return urls;
 };
 
-//better to be on view level?
 const isValidUrl = (url) => {
   try {
     new URL(url);
