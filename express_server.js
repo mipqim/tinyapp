@@ -23,33 +23,8 @@ const { generateRandomString,
         isValidUrl 
       } = require('./helpers');
 
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "jI8Njdd",
-    hit: 11,
-    insertDate: '2020-12-02'
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "jI8Njdd",
-    hit: 100,
-    insertDate: '2021-09-01'
-  }
-};
-
-const users = {
-  "jI8Njdd": {
-    id: "jI8Njdd",
-    email: "jeff.shjeon@gmail.com",
-    password: "$2b$10$NX0v98lKM2u.fJECvHdUouR7maVlo5tobWBHmUxFTt4oe.F2r/j2y"
-  },
-  "kST6Rs1": {
-    id: "kST6Rs1",
-    email: "master@example.com",
-    password: "$2b$10$WW0NsLRTzhDPis7l9/qHwOKoKUnXghGISASMwN2dnwx8vVZ3tj47K"
-  }
-};
+const urlDatabase = {};
+const users = {};
 
 const errMsgs = {
   _ERR_S_USR001: "Email address is already being used.",
