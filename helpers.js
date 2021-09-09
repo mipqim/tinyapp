@@ -9,7 +9,7 @@
 const generateRandomString = (len = 6) => {
   let randomStr = '';
 
-  for (const i = 0; i < len; i++) {
+  for (let i = 0; i < len; i++) {
     let charNum = Math.floor(Math.random() * 62) + 48;
     if (charNum > 57) { //48 [start position of numbers] + 9 [0 to 9]
       charNum += 7;
