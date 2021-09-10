@@ -107,6 +107,23 @@ app.put("/urls/:shortURL", (req, res) => {
   const id = req.params.shortURL;
   const newURL = req.body.newURL;
   const userId = req.session.user_id;
+
+  const templateVars = { user: users[userId], 
+    shortURL: id, 
+    longURL: urlDatabase[id].longURL, 
+    hit: urlDatabase[id].hit, 
+    insertDate: urlDatabase[id].insertDate
+   };
+
+  if (!newURL.trim()) {
+    errorHandler(req, res, `urls_show`, errMsgs._ERR_S_URL003, templateVars);
+    return;
+  }
+  if (!isValidUrl(newURL)) {
+    errorHandler(req, res, `urls_show`, errMsgs._ERR_S_URL004, templateVars);
+    return;
+  }
+
   if (hasOwnShortId(id, userId, urlDatabase)) {
     const hit = urlDatabase[id].hit;
     const insertDate = urlDatabase[id].insertDate;
